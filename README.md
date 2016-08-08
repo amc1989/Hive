@@ -1,5 +1,5 @@
 # Hive
-源码;
+源码
  public static enum Mode {
     
     /**
