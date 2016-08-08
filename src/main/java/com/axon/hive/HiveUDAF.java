@@ -18,6 +18,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.StandardListObjectInspector
  */
 public class HiveUDAF extends GenericUDAFEvaluator {
 	private PrimitiveObjectInspector primitiveObjectInspector;
+	private StandardListObjectInspector standardListObjectInspector;
 
 	/**
 	 * 该函数还是对这个udaf最后结果输出的类型进行确定，省去了对参数个数的判断
@@ -44,9 +45,12 @@ public class HiveUDAF extends GenericUDAFEvaluator {
 				return ObjectInspectorFactory
 						.getStandardListObjectInspector(primitiveObjectInspector);
 			} else {
+				standardListObjectInspector = (StandardListObjectInspector) parameters[0];
+				primitiveObjectInspector = (PrimitiveObjectInspector) standardListObjectInspector
+						.getListElementObjectInspector();
 				return ObjectInspectorFactory
 						.getStandardListObjectInspector(ObjectInspectorUtils
-								.getStandardObjectInspector(parameters[0]));
+								.getStandardObjectInspector(standardListObjectInspector));
 			}
 		}
 
@@ -55,14 +59,15 @@ public class HiveUDAF extends GenericUDAFEvaluator {
 	/**
 	 * 构造个内部类，用于存储数据
 	 */
+	@SuppressWarnings("deprecation")
 	static class MyListBuffered implements AggregationBuffer {
 		List<Object> list;
 	}
 
 	/**
-	 * 获取一个AggregationBuffer的对象.
-	 * getNewAggregationBuffer方法和reset方法是一起使用的
+	 * 获取一个AggregationBuffer的对象. getNewAggregationBuffer方法和reset方法是一起使用的
 	 */
+	@SuppressWarnings("deprecation")
 	@Override
 	public AggregationBuffer getNewAggregationBuffer() throws HiveException {
 		MyListBuffered myListBuffered = new MyListBuffered();
@@ -75,6 +80,7 @@ public class HiveUDAF extends GenericUDAFEvaluator {
 	 * 重新设置聚合对象
 	 * 
 	 */
+	@SuppressWarnings("deprecation")
 	@Override
 	public void reset(AggregationBuffer agg) throws HiveException {
 		MyListBuffered myListBuffered = (MyListBuffered) agg;
@@ -87,6 +93,7 @@ public class HiveUDAF extends GenericUDAFEvaluator {
 	 * @param parameters
 	 *            需要迭代的对象，不过要要对这个对象进行类型转换，详细看putIntoList方法
 	 */
+	@SuppressWarnings("deprecation")
 	@Override
 	public void iterate(AggregationBuffer agg, Object[] parameters)
 			throws HiveException {
@@ -98,6 +105,7 @@ public class HiveUDAF extends GenericUDAFEvaluator {
 		}
 
 	}
+
 	/**
 	 * 
 	 * @param object
@@ -114,29 +122,48 @@ public class HiveUDAF extends GenericUDAFEvaluator {
 
 	/**
 	 * 
-	 * 就是对部分数据的存储对象进行转换。
-	 * 这个结果类型必须是我们在init方法中指出的最后的结果的输出类型
+	 * 就是对部分数据的存储对象进行转换。 这个结果类型必须是我们在init方法中指出的最后的结果的输出类型
+	 * 
 	 * @return partial aggregation result.
 	 */
+	@SuppressWarnings("deprecation")
 	@Override
 	public Object terminatePartial(AggregationBuffer agg) throws HiveException {
 		MyListBuffered myListBuffered = (MyListBuffered) agg;
-	     List<Object> list =  new ArrayList<Object>(myListBuffered.list.size());
-	     list.addAll(myListBuffered.list);
+		List<Object> list = new ArrayList<Object>(myListBuffered.list.size());
+		list.addAll(myListBuffered.list);
 		return list;
 	}
-
+	
+	
+	/**
+	 * @param agg   就是聚合数据的对象
+	 * 
+	 * @param partial ：是我们最终结果要返回的类型，因此必须先转换我们要返回的类型，比如：list，那么这个对象引用
+	 * 就包含了所有的对象，需要对其把list里面的对象，添加到 agg这个聚合数据的对象中
+	 * 
+	 */
+	@SuppressWarnings({ "deprecation", "unchecked" })
 	@Override
 	public void merge(AggregationBuffer agg, Object partial)
 			throws HiveException {
-		
-
+		MyListBuffered myListBuffered = (MyListBuffered) agg;
+		ArrayList<Object> arrayList = (ArrayList<Object>) standardListObjectInspector
+				.getList(partial);
+           for(Object object:arrayList ){
+        	   putIntoList(object,myListBuffered);
+           }
 	}
-
+   
+	/**
+     * 对所有的数据进行整合
+     */
+	@SuppressWarnings("deprecation")
 	@Override
-	public Object terminate(AggregationBuffer agg) throws HiveException {
-		// TODO Auto-generated method stub
-		return null;
+	public Object terminate( AggregationBuffer agg) throws HiveException {
+		MyListBuffered myListBuffered = (MyListBuffered) agg;
+		ArrayList<Object> arrayList = new ArrayList<Object>(myListBuffered.list.size());
+		return arrayList.addAll(myListBuffered.list);
 	}
 
 }
