@@ -11,6 +11,11 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StandardListObjectInspector;
 
+/**
+ * 
+ * @author zhulei
+ *
+ */
 public class HiveUDAF extends GenericUDAFEvaluator {
 	private PrimitiveObjectInspector primitiveObjectInspector;
 
